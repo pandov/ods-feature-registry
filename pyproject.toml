@@ -11,7 +11,12 @@ authors = [
     {name = "Viacheslav Pandov", email = "pandovvd@gmail.com"},
 ]
 readme = "README.md"
-dependencies = file: requirements.txt
+dynamic = ["dependencies"]
+
 
 [tool.setuptools]
 packages = ["feature_registry"]
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
