@@ -1,3 +1,15 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "feature_registry"
+version = 1.0
+description = "https://github.com/pandov/ods-feature-registry"
+authors = ["Viacheslav Pandov <pandovvd@gmail.com>"]
+readme = "README.md"
+
+
+[tool.setuptools]
+packages = ["feature_registry"]
