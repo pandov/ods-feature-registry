@@ -11,7 +11,7 @@ authors = [
     {name = "Viacheslav Pandov", email = "pandovvd@gmail.com"},
 ]
 readme = "README.md"
-
+dependencies = file: requirements.txt
 
 [tool.setuptools]
 packages = ["feature_registry"]
