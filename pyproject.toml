@@ -7,7 +7,9 @@ build-backend = "setuptools.build_meta"
 name = "feature_registry"
 version = "1.0"
 description = "https://github.com/pandov/ods-feature-registry"
-authors = ["Viacheslav Pandov <pandovvd@gmail.com>"]
+authors = [
+    {name = "Viacheslav Pandov", email = "pandovvd@gmail.com"},
+]
 readme = "README.md"
 
 
