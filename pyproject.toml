@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ods-feature-registry"
+name = "feature_registry"
 version = "0.1.0"
 description = "https://github.com/pandov/ods-feature-registry"
 authors = ["Viacheslav Pandov <pandovvd@gmail.com>"]
