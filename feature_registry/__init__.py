@@ -106,7 +106,7 @@ class FeatureRegistry:
         for name, feature in pbar:
             pbar.set_postfix({'feature': name})
             if feature.cache:
-                feature.collect(self)
+                feature.collect(self, low_memory=True, cache=False)
 
     def join(self, df: pl.LazyFrame) -> pl.LazyFrame:
         for name, feature in self.registry_.items():
