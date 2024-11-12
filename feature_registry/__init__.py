@@ -20,7 +20,6 @@ class Feature:
             variables: Optional[Dict[str, Any]] = None,
             join_on: Optional[Union[str, List[str]]] = None,
             cache: Optional[bool] = True,
-            scan_params: Optional[Dict[str, Any]] = None,
     ):
         self.name = name
         self.callback = callback
@@ -28,16 +27,13 @@ class Feature:
         self.variables = variables or dict()
         self.join_on = join_on
         self.cache = cache
-        if scan_params is None:
-            scan_params = dict()
-        self.scan_params = scan_params
 
     def hashdict(self) -> str:
         hashdict = self.variables.copy()
         hashdict['__sourcecode__'] = getsource(self.callback)
         return hashdict
 
-    def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
+    def collect(self, registry: 'FeatureRegistry', **scan_params) -> pl.LazyFrame:
         dependencies_keys = sorted(self.dependencies)
 
         hashdict = self.hashdict()
@@ -47,7 +43,7 @@ class Feature:
         filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
     
         if filepath.exists() and self.cache:
-            return pl.scan_parquet(filepath, **self.scan_params)
+            return pl.scan_parquet(filepath, **scan_params)
 
         variables = self.variables.copy()
         if self.join_on is not None:
@@ -61,24 +57,26 @@ class Feature:
             return result
         else:
             result.collect(streaming=True).write_parquet(filepath)
-            return pl.scan_parquet(filepath, **self.scan_params)
+            return pl.scan_parquet(filepath, **scan_params)
 
 
 class FeatureRegistry:
 
-    def __init__(self, storage_path: str, scan_params: Dict[str, Any] = None, **variables):
+    def __init__(self, storage_path: str, **variables):
         self.registry_ = {}
         self.variables = variables
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(exist_ok=True, parents=True)
-        self.scan_params = scan_params
 
     def __repr__(self) -> str:
         return str(list(self.registry_.keys()))
 
     def __getitem__(self, name: str) -> pl.LazyFrame:
+        return self.get(name)
+
+    def get(self, name: str, *args, **kwargs):
         assert name in self.registry_, name
-        return self.registry_[name].collect(self)
+        return self.registry_[name].collect(self, *args, **kwargs)
 
     def add(
             self,
@@ -100,7 +98,6 @@ class FeatureRegistry:
                 variables=variables,
                 join_on=join_on,
                 cache=cache,
-                scan_params=self.scan_params,
             )
         return decorator
 
@@ -118,7 +115,7 @@ class FeatureRegistry:
                 continue
             assert 'date' in on, name
             df = df.join(
-                other=self[name],
+                other=self.get(name, low_memory=True, cache=False),
                 on=on,
                 how='left',
             )
