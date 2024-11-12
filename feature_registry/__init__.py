@@ -60,7 +60,7 @@ class Feature:
         if not self.cache:
             return result
         else:
-            result.collect().write_parquet(filepath)
+            result.collect(streaming=True).write_parquet(filepath)
             return pl.scan_parquet(filepath, **self.scan_params)
 
 
