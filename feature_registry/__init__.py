@@ -20,6 +20,7 @@ class Feature:
             variables: Optional[Dict[str, Any]] = None,
             join_on: Optional[Union[str, List[str]]] = None,
             cache: Optional[bool] = True,
+            scan_params: Optional[Dict[str, Any]] = None,
     ):
         self.name = name
         self.callback = callback
@@ -27,6 +28,9 @@ class Feature:
         self.variables = variables or dict()
         self.join_on = join_on
         self.cache = cache
+        if scan_params is None:
+            scan_params = dict()
+        self.scan_params = scan_params
 
     def hashdict(self) -> str:
         hashdict = self.variables.copy()
@@ -43,7 +47,7 @@ class Feature:
         filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
     
         if filepath.exists() and self.cache:
-            return pl.scan_parquet(filepath)
+            return pl.scan_parquet(filepath, **self.scan_params)
 
         variables = self.variables.copy()
         if self.join_on is not None:
@@ -57,16 +61,17 @@ class Feature:
             return result
         else:
             result.collect().write_parquet(filepath)
-            return pl.scan_parquet(filepath)
+            return pl.scan_parquet(filepath, **self.scan_params)
 
 
 class FeatureRegistry:
 
-    def __init__(self, storage_path: str, **variables):
+    def __init__(self, storage_path: str, scan_params: Dict[str, Any] = None, **variables):
         self.registry_ = {}
         self.variables = variables
         self.storage_path = Path(storage_path)
         self.storage_path.mkdir(exist_ok=True, parents=True)
+        self.scan_params = scan_params
 
     def __repr__(self) -> str:
         return str(list(self.registry_.keys()))
@@ -95,6 +100,7 @@ class FeatureRegistry:
                 variables=variables,
                 join_on=join_on,
                 cache=cache,
+                scan_params=self.scan_params,
             )
         return decorator
 
