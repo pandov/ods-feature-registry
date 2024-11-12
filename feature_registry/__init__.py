@@ -115,7 +115,7 @@ class FeatureRegistry:
                 continue
             assert 'date' in on, name
             df = df.join(
-                other=self.get(name, low_memory=True, cache=False),
+                other=self.get(name),#, low_memory=True, cache=False),
                 on=on,
                 how='left',
             )
