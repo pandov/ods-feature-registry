@@ -16,7 +16,7 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
         df = df.drop(ignore)
     df_max = df.select(cs.integer()).max()
     schema = dict(df_max.schema)
-    for dtype in (pl.UInt32, pl.UInt16, pl.UInt8):
+    for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
         df_dict = (
             df_max
             .cast({cs.integer(): dtype}, strict=False)
