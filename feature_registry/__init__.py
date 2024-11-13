@@ -70,15 +70,14 @@ class Feature:
 
         dependencies = {dep: registry[dep] for dep in dependencies_keys}
     
-        result = self.callback(**dependencies, **variables)
+        result = self.callback(**dependencies, **variables).collect()
+        print(result.schema)
+        result = result.cast(get_optimal_schema(result, ignore=self.join_on))
+        print(result.schema)
 
         if not self.cache:
             return result
         else:
-            result = result.collect()
-            print(result.schema)
-            result = result.cast(get_optimal_schema(result, ignore=self.join_on))
-            print(result.schema)
             result.write_parquet(filepath)
             return pl.scan_parquet(filepath, **scan_params)
 
