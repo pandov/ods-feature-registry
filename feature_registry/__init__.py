@@ -76,7 +76,10 @@ class Feature:
             return result
         else:
             result = result.collect()
-            result.cast(get_optimal_schema(result, ignore=self.join_on)).write_parquet(filepath)
+            print(result.schema)
+            result = result.cast(get_optimal_schema(result, ignore=self.join_on))
+            print(result.schema)
+            result.write_parquet(filepath)
             return pl.scan_parquet(filepath, **scan_params)
 
 
