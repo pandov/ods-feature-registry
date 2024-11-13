@@ -1,4 +1,5 @@
 import polars as pl
+import polars.selectors as cs
 from tqdm import tqdm
 from hashlib import md5
 from pathlib import Path
@@ -8,6 +9,24 @@ from typing import Optional, Union, Callable, List, Dict, Any
 
 def md5_hash(x: str):
     return md5(str(x).encode('utf-8')).hexdigest()
+
+
+def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> pl.Schema:
+    if ignore is not None:
+        df = df.drop(ignore)
+    df_max = df.select(cs.integer()).max()
+    schema = dict(df_max.schema)
+    for dtype in (pl.UInt32, pl.UInt16, pl.UInt8):
+        df_dict = (
+            df_max
+            .cast({cs.integer(): dtype}, strict=False)
+            .to_dict(as_series=False)
+        )
+        for k, v in df_dict.items():
+            if v[0] is not None:
+                schema[k] = dtype
+    return {cs.float(): pl.Float32, **schema}
+
 
 
 class Feature:
@@ -56,7 +75,8 @@ class Feature:
         if not self.cache:
             return result
         else:
-            result.collect(streaming=True).write_parquet(filepath)
+            result = result.collect()
+            result.cast(get_optimal_schema(result)).write_parquet(filepath)
             return pl.scan_parquet(filepath, **scan_params)
 
 
@@ -106,7 +126,7 @@ class FeatureRegistry:
         for name, feature in pbar:
             pbar.set_postfix({'feature': name})
             if feature.cache:
-                feature.collect(self, low_memory=True, cache=False)
+                feature.collect(self, cache=False)
 
     def join(self, df: pl.LazyFrame) -> pl.LazyFrame:
         for name, feature in self.registry_.items():
@@ -115,7 +135,7 @@ class FeatureRegistry:
                 continue
             assert 'date' in on, name
             df = df.join(
-                other=self.get(name),#, low_memory=True, cache=False),
+                other=self.get(name, cache=False),
                 on=on,
                 how='left',
             )
