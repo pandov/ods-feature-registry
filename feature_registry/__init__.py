@@ -14,16 +14,19 @@ def md5_hash(x: str):
 def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> pl.Schema:
     if ignore is not None:
         df = df.drop(ignore)
-    df_max = df.select(cs.integer()).max()
-    schema = dict(df_max.schema)
+    minmax = pl.concat([
+        df.select(cs.integer()).min(),
+        df.select(cs.integer()).max(),
+    ])
+    schema = dict(minmax.schema)
     for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
         df_dict = (
-            df_max
+            minmax
             .cast({cs.integer(): dtype}, strict=False)
             .to_dict(as_series=False)
         )
         for k, v in df_dict.items():
-            if v[0] is not None:
+            if v[0] is not None and v[1] is not None:
                 schema[k] = dtype
     return {cs.float(): pl.Float32, **schema}
 
@@ -69,9 +72,10 @@ class Feature:
             variables['join_on'] = self.join_on.copy()
 
         dependencies = {dep: registry[dep] for dep in dependencies_keys}
-    
+
         result = self.callback(**dependencies, **variables).collect()
-        result = result.cast(get_optimal_schema(result, ignore=self.join_on))
+        schema = get_optimal_schema(result, ignore=self.join_on)
+        result = result.cast(schema)
 
         if not self.cache:
             return result.lazy()
