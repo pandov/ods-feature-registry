@@ -141,11 +141,16 @@ class FeatureRegistry:
             if feature.cache:
                 feature.collect(self)
 
-    def join(self, df: pl.LazyFrame, features: Optional[List[str]] = None, filter_expr: Optional[pl.Expr] = None) -> pl.LazyFrame:
-        # if filter_expr is not None:
-        #     df = df.filter(filter_expr)
-        if features is None:
-            feature = self.features
+    def join(
+            self,
+            df: pl.LazyFrame,
+            feature_fn: Optional[Callable] = None,
+            filter_expr: Optional[pl.Expr] = None,
+            selector: Optional[cs._selector_proxy_] = None,
+    ) -> pl.LazyFrame:
+        features = self.features
+        if feature_fn is not None:
+            features = [name for name in features if feature_fn(name)]
         for name in features:
             feature = self.registry_[name]
             on = feature.join_on
@@ -155,6 +160,8 @@ class FeatureRegistry:
             other = self.get(name)
             if filter_expr is not None:
                 other = other.filter(filter_expr)
+            if selector is not None:
+                other = other.select(selector)
             df = df.join(other, on=on, how='left')
         return df
 
