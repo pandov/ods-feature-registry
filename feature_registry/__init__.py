@@ -95,12 +95,21 @@ class FeatureRegistry:
     def __repr__(self) -> str:
         return str(list(self.registry_.keys()))
 
-    def __getitem__(self, name: str) -> pl.LazyFrame:
-        return self.get(name)
+    def __getitem__(self, index: Union[str, int]) -> pl.LazyFrame:
+        if isinstance(index, int):
+            index = self.features[index]
+        return self.get(index)
+
+    def __len__(self) -> int:
+        return len(self.registry_)
+
+    @property
+    def features(self) -> List[str]:
+        return list(self.registry_.keys())
 
     def get(self, name: str, *args, **kwargs):
         assert name in self.registry_, name
-        return self.registry_[name].collect(self, *args, **kwargs)
+        return self.registry_[name].collect(self, *args, **kwargs, cache=False)
 
     def add(
             self,
@@ -132,17 +141,18 @@ class FeatureRegistry:
             if feature.cache:
                 feature.collect(self, cache=False)
 
-    def join(self, df: pl.LazyFrame) -> pl.LazyFrame:
+    def join(self, df: pl.LazyFrame, filter_expr: Optional[pl.Expr] = None) -> pl.LazyFrame:
+        if filter_expr is not None:
+            df = df.filter(filter_expr)
         for name, feature in self.registry_.items():
             on = feature.join_on
             if on is None:
                 continue
             assert 'date' in on, name
-            df = df.join(
-                other=self.get(name, cache=False),
-                on=on,
-                how='left',
-            )
+            other = self.get(name, cache=False)
+            if filter_expr is not None:
+                other = other.filter(filter_expr)
+            df = df.join(other, on=on, how='left')
         return df
 
 
