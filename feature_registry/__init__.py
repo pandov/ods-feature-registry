@@ -55,7 +55,7 @@ class Feature:
         hashdict['__sourcecode__'] = getsource(self.callback)
         return hashdict
 
-    def collect(self, registry: 'FeatureRegistry', **scan_params) -> pl.LazyFrame:
+    def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         dependencies_keys = sorted(self.dependencies)
 
         hashdict = self.hashdict()
@@ -65,7 +65,7 @@ class Feature:
         filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
     
         if filepath.exists() and self.cache:
-            return pl.scan_parquet(filepath, **scan_params)
+            return pl.scan_parquet(filepath, cache=False)
 
         variables = self.variables.copy()
         if self.join_on is not None:
@@ -81,7 +81,7 @@ class Feature:
             return result.lazy()
         else:
             result.write_parquet(filepath)
-            return pl.scan_parquet(filepath, **scan_params)
+            return pl.scan_parquet(filepath, cache=False)
 
 
 class FeatureRegistry:
@@ -107,9 +107,9 @@ class FeatureRegistry:
     def features(self) -> List[str]:
         return list(self.registry_.keys())
 
-    def get(self, name: str, *args, **kwargs):
+    def get(self, name: str):
         assert name in self.registry_, name
-        return self.registry_[name].collect(self, *args, **kwargs, cache=False)
+        return self.registry_[name].collect(self)
 
     def add(
             self,
@@ -139,7 +139,7 @@ class FeatureRegistry:
         for name, feature in pbar:
             pbar.set_postfix({'feature': name})
             if feature.cache:
-                feature.collect(self, cache=False)
+                feature.collect(self)
 
     def join(self, df: pl.LazyFrame, features: Optional[List[str]] = None, filter_expr: Optional[pl.Expr] = None) -> pl.LazyFrame:
         if features is None:
@@ -150,7 +150,7 @@ class FeatureRegistry:
             if on is None:
                 continue
             assert 'date' in on, name
-            other = self.get(name, cache=False)
+            other = self.get(name)
             if filter_expr is not None:
                 other = other.filter(filter_expr)
             df = df.join(other, on=on, how='left')
