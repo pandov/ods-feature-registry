@@ -142,8 +142,6 @@ class FeatureRegistry:
                 feature.collect(self, cache=False)
 
     def join(self, df: pl.LazyFrame, filter_expr: Optional[pl.Expr] = None) -> pl.LazyFrame:
-        if filter_expr is not None:
-            df = df.filter(filter_expr)
         for name, feature in self.registry_.items():
             on = feature.join_on
             if on is None:
