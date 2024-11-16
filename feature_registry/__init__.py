@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import polars as pl
 import polars.selectors as cs
@@ -6,6 +7,11 @@ from hashlib import md5
 from pathlib import Path
 from inspect import getsource
 from typing import Optional, Union, Callable, List, Dict, Any
+
+
+def random_seed(random_state: Optional[int] = 42):
+    random.seed(random_state)
+    np.random.seed(random_state)
 
 
 def md5_hash(x: str):
@@ -66,6 +72,8 @@ class Feature:
         return hashdict
 
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
+        random_seed()
+    
         dependencies_keys = sorted(self.dependencies)
 
         hashdict = self.hashdict()
