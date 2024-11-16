@@ -156,9 +156,11 @@ class FeatureRegistry:
             self,
             df: pl.LazyFrame,
             feature_fn: Optional[Callable] = None,
-            filter_expr: Optional[pl.Expr] = None,
             selector: Optional[cs._selector_proxy_] = None,
     ) -> pl.LazyFrame:
+        dates = df.select('date').unique().collect().to_series()
+        filter_expr = pl.col('date').is_between(dates.min(), dates.max())
+
         features = self.features
         if feature_fn is not None:
             features = [name for name in features if feature_fn(name)]
@@ -168,9 +170,7 @@ class FeatureRegistry:
             if on is None:
                 continue
             assert 'date' in on, name
-            other = self.get(name)
-            if filter_expr is not None:
-                other = other.filter(filter_expr)
+            other = self.get(name).filter(filter_expr)
             if selector is not None:
                 other = other.select(selector)
             df = df.join(other, on=on, how='left')
