@@ -25,10 +25,11 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
     if len(floats_cols) > 0:
         arr = floats.to_numpy()
         floats_cols = floats_cols[np.isclose(arr, arr.round()).all(axis=0)]
-        minmax = pl.concat([minmax,
+        floats = pl.concat([
             df.select(*floats_cols).min(),
             df.select(*floats_cols).max(),
-        ], how='horizontal')
+        ], how='vertical'))
+        minmax = pl.concat([minmax, floats], how='horizontal')
     schema = dict(minmax.schema)
     for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
         df_dict = (
