@@ -148,6 +148,7 @@ class FeatureRegistry:
                 cache=cache,
                 streaming=streaming,
             )
+            return callback
         return decorator
 
     def collect(self):
