@@ -15,7 +15,7 @@ def md5_hash(x: str):
 def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> pl.Schema:
     selector = cs.integer()
     if ignore is not None:
-        selector |= cs.by_name(*ignore)
+        selector = selector & (~cs.by_name(*ignore))
     minmax = pl.concat([
         df.select(selector).min(),
         df.select(selector).max(),
