@@ -53,6 +53,7 @@ class Feature:
             variables: Optional[Dict[str, Any]] = None,
             join_on: Optional[Union[str, List[str]]] = None,
             cache: Optional[bool] = True,
+            streaming: Optional[bool] = False,
     ):
         self.name = name
         self.callback = callback
@@ -60,6 +61,7 @@ class Feature:
         self.variables = variables or dict()
         self.join_on = join_on
         self.cache = cache
+        self.streaming = streaming
 
     def hashdict(self) -> str:
         hashdict = self.variables.copy()
@@ -84,7 +86,7 @@ class Feature:
 
         dependencies = {dep: registry[dep] for dep in dependencies_keys}
 
-        result = self.callback(**dependencies, **variables).collect()
+        result = self.callback(**dependencies, **variables).collect(streaming=self.streaming)
         schema = get_optimal_schema(result, ignore=self.join_on)
         result = result.cast(schema)
 
@@ -129,6 +131,7 @@ class FeatureRegistry:
             variables: Optional[List[str]] = None,
             join_on: Optional[Union[str, List[str]]] = None,
             cache: Optional[bool] = True,
+            streaming: Optional[bool] = False,
         ):
         assert name not in self.registry_, name
         if variables is not None:
@@ -142,6 +145,7 @@ class FeatureRegistry:
                 variables=variables,
                 join_on=join_on,
                 cache=cache,
+                streaming=streaming,
             )
         return decorator
 
