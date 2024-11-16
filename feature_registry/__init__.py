@@ -75,7 +75,7 @@ class FeatureStore:
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         random_seed()
     
-        hashsum = md5_hash(self.hashdict())
+        hashsum = md5_hash(self.hashdict(registry))
         filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
     
         if filepath.exists() and self.cache:
