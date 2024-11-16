@@ -32,11 +32,7 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
         minmax = pl.concat([minmax, floats], how='horizontal')
     schema = dict(minmax.schema)
     for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
-        df_dict = (
-            minmax
-            .cast({cs.all(): dtype}, strict=False)
-            .to_dict(as_series=False)
-        )
+        df_dict = minmax.cast(dtype, strict=False).to_dict(as_series=False)
         for k, v in df_dict.items():
             if v[0] is not None and v[1] is not None:
                 schema[k] = dtype
