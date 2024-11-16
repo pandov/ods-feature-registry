@@ -46,7 +46,7 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
     return {cs.float(): pl.Float32, **schema}
 
 
-class Feature:
+class FeatureStore:
 
     def __init__(
             self,
@@ -60,26 +60,22 @@ class Feature:
     ):
         self.name = name
         self.callback = callback
-        self.dependencies = dependencies or list()
+        self.dependencies = sorted(dependencies or list())
         self.variables = variables or dict()
         self.join_on = join_on
         self.cache = cache
         self.streaming = streaming
 
-    def hashdict(self) -> str:
+    def hashdict(self, registry: 'FeatureRegistry') -> Dict[str, Any]:
         hashdict = self.variables.copy()
         hashdict['__sourcecode__'] = getsource(self.callback)
+        hashdict['__parent__'] = {dep: registry.registry_[dep].hashdict(registry) for dep in self.dependencies}
         return hashdict
 
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         random_seed()
     
-        dependencies_keys = sorted(self.dependencies)
-
-        hashdict = self.hashdict()
-        hashdict['__parent__'] = {dep: registry.registry_[dep].hashdict() for dep in dependencies_keys}
-        hashsum = md5_hash(hashdict)
-
+        hashsum = md5_hash(self.hashdict())
         filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
     
         if filepath.exists() and self.cache:
@@ -89,7 +85,7 @@ class Feature:
         if self.join_on is not None:
             variables['join_on'] = self.join_on.copy()
 
-        dependencies = {dep: registry[dep] for dep in dependencies_keys}
+        dependencies = {dep: registry[dep] for dep in self.dependencies}
 
         result = self.callback(**dependencies, **variables).collect(streaming=self.streaming)
         schema = get_optimal_schema(result, ignore=self.join_on)
@@ -143,7 +139,7 @@ class FeatureRegistry:
             variables = {var: self.variables[var] for var in sorted(variables)}
         def decorator(callback):
             feature_name = name or callback.__name__
-            self.registry_[feature_name] = Feature(
+            self.registry_[feature_name] = FeatureStore(
                 name=feature_name,
                 callback=callback,
                 dependencies=dependencies,
