@@ -26,10 +26,10 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
         df.select(selector).min(),
         df.select(selector).max(),
     ], how='vertical')
-    floats = df.select(cs.float())
+    floats = df.select(cs.float()).cast(pl.Float32)
     floats_cols = np.asarray(floats.columns)
     if len(floats_cols) > 0:
-        arr = floats.to_numpy()
+        arr = floats.to_numpy(dtype=np.float32)
         isclose = np.isclose(arr, arr.round(), rtol=1e-2, atol=1e-2, equal_nan=True).all(axis=0)
         floats_cols = floats_cols[isclose]
         floats = pl.concat([
