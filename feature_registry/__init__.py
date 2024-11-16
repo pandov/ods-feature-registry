@@ -16,20 +16,19 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
     selector = cs.integer()
     if ignore is not None:
         selector |= cs.by_name(*ignore)
-    minmax = [
+    minmax = pl.concat([
         df.select(selector).min(),
         df.select(selector).max(),
-    ]
+    ], how='vertical')
     floats = df.select(cs.float())
     floats_cols = np.asarray(floats.columns)
     if len(floats_cols) > 0:
         arr = floats.to_numpy()
         floats_cols = floats_cols[np.isclose(arr, arr.round()).all(axis=0)]
-        minmax += [
+        minmax = pl.concat([minmax,
             df.select(*floats_cols).min(),
             df.select(*floats_cols).max(),
-        ]
-    minmax = pl.concat(minmax)
+        ], how='horizontal')
     schema = dict(minmax.schema)
     for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
         df_dict = (
