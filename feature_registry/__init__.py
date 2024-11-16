@@ -1,3 +1,4 @@
+import numpy as np
 import polars as pl
 import polars.selectors as cs
 from tqdm import tqdm
@@ -12,12 +13,23 @@ def md5_hash(x: str):
 
 
 def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> pl.Schema:
+    selector = cs.integer()
     if ignore is not None:
-        df = df.drop(ignore)
-    minmax = pl.concat([
-        df.select(cs.integer()).min(),
-        df.select(cs.integer()).max(),
-    ])
+        selector |= cs.by_name(*ignore)
+    minmax = [
+        df.select(selector).min(),
+        df.select(selector).max(),
+    ]
+    floats = df.select(cs.float())
+    floats_cols = np.asarray(floats.columns)
+    if len(floats_cols) > 0:
+        arr = floats.to_numpy()
+        floats_cols = floats_cols[np.isclose(arr, arr.round()).all(axis=0)]
+        minmax += [
+            df.select(*floats_cols).min(),
+            df.select(*floats_cols).max(),
+        ]
+    minmax = pl.concat(minmax)
     schema = dict(minmax.schema)
     for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
         df_dict = (
@@ -29,7 +41,6 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
             if v[0] is not None and v[1] is not None:
                 schema[k] = dtype
     return {cs.float(): pl.Float32, **schema}
-
 
 
 class Feature:
