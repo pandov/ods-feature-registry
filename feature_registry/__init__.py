@@ -68,7 +68,10 @@ class FeatureStore:
 
     def hashdict(self, registry: 'FeatureRegistry') -> Dict[str, Any]:
         hashdict = self.variables.copy()
-        hashdict['__sourcecode__'] = getsource(self.callback)
+        source = getsource(self.callback)
+        if source.startswith('@'):
+            source = '\n'.join(source.split('\n')[1:])
+        hashdict['__sourcecode__'] = source
         hashdict['__parent__'] = {dep: registry.registry_[dep].hashdict(registry) for dep in self.dependencies}
         return hashdict
 
