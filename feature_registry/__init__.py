@@ -24,7 +24,8 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
     floats_cols = np.asarray(floats.columns)
     if len(floats_cols) > 0:
         arr = floats.to_numpy()
-        floats_cols = floats_cols[np.isclose(arr, arr.round()).all(axis=0)]
+        isclose = np.isclose(arr, arr.round(), rtol=1e-2, atol=1e-2, equal_nan=True).all(axis=0)
+        floats_cols = floats_cols[isclose]
         floats = pl.concat([
             df.select(*floats_cols).min(),
             df.select(*floats_cols).max(),
