@@ -29,7 +29,7 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
     floats = df.select(cs.float()).cast(pl.Float32)
     floats_cols = np.asarray(floats.columns)
     if len(floats_cols) > 0:
-        arr = floats.to_numpy(dtype=np.float32)
+        arr = floats.to_numpy()
         isclose = np.isclose(arr, arr.round(), rtol=1e-2, atol=1e-2, equal_nan=True).all(axis=0)
         floats_cols = floats_cols[isclose]
         floats = pl.concat([
