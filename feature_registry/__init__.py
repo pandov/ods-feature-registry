@@ -9,13 +9,7 @@ from inspect import getsource
 from typing import Optional, Union, Callable, List, Dict, Any
 
 
-def random_seed(random_state: Optional[int] = 42):
-    random.seed(random_state)
-    np.random.seed(random_state)
-
-
-def md5_hash(x: str):
-    return md5(str(x).encode('utf-8')).hexdigest()
+INTEGERS = (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8)
 
 
 def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> pl.Schema:
@@ -38,12 +32,23 @@ def get_optimal_schema(df: pl.DataFrame, ignore: Optional[List[str]] = None) -> 
         ], how='vertical')
         minmax = pl.concat([minmax, floats], how='horizontal')
     schema = dict(minmax.schema)
-    for dtype in (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8):
+    for dtype in INTEGERS:
         df_dict = minmax.cast(dtype, strict=False).to_dict(as_series=False)
         for k, v in df_dict.items():
             if v[0] is not None and v[1] is not None:
+                # if v[0] == 0 and v[1] == 1 and schema[k] in INTEGERS:
+                #     dtype = pl.Boolean
                 schema[k] = dtype
     return {cs.float(): pl.Float32, **schema}
+
+
+def random_seed(random_state: Optional[int] = 42):
+    random.seed(random_state)
+    np.random.seed(random_state)
+
+
+def md5_hash(x: str):
+    return md5(str(x).encode('utf-8')).hexdigest()
 
 
 class FeatureStore:
@@ -52,11 +57,12 @@ class FeatureStore:
             self,
             name: str,
             callback: Callable,
-            dependencies: Optional[List[str]] = None,
-            variables: Optional[Dict[str, Any]] = None,
-            join_on: Optional[Union[str, List[str]]] = None,
-            cache: Optional[bool] = True,
-            streaming: Optional[bool] = False,
+            dependencies: List[str],
+            variables: Dict[str, Any],
+            join_on: Union[str, List[str]],
+            cache: bool,
+            streaming: bool,
+            hashing: bool,
     ):
         self.name = name
         self.callback = callback
@@ -65,6 +71,7 @@ class FeatureStore:
         self.join_on = join_on
         self.cache = cache
         self.streaming = streaming
+        self.hashing = hashing
 
     def hashdict(self, registry: 'FeatureRegistry') -> Dict[str, Any]:
         hashdict = self.variables.copy()
@@ -77,9 +84,12 @@ class FeatureStore:
 
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         random_seed()
-    
-        hashsum = md5_hash(self.hashdict(registry))
-        filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
+
+        if self.hashing:
+            hashsum = md5_hash(self.hashdict(registry))
+            filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
+        else:
+            filepath = registry.storage_path / f'{self.name}.parquet'
     
         if filepath.exists() and self.cache:
             return pl.scan_parquet(filepath, cache=False)
@@ -136,6 +146,7 @@ class FeatureRegistry:
             join_on: Optional[Union[str, List[str]]] = None,
             cache: Optional[bool] = True,
             streaming: Optional[bool] = False,
+            hashing: Optional[bool] = True,
         ):
         assert name not in self.registry_, name
         if variables is not None:
@@ -150,6 +161,7 @@ class FeatureRegistry:
                 join_on=join_on,
                 cache=cache,
                 streaming=streaming,
+                hashing=hashing,
             )
             return callback
         return decorator
