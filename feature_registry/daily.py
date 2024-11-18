@@ -76,12 +76,20 @@ def calculate_daily_features(
         days: List[int],
         sep: str,
         strict: Optional[bool] = True,
+        fill_null: Optional[float] = 0,
 ):
     aggregated = aggregate_daily_features(interactions, by=by, agg=agg)
     cumulated = cumulate_daily_features(aggregated, by=by, agg=cum, dates=dates, days=days, strict=strict)
     suffix = '_'.join([x for x in by if x != 'date']).replace('_id', '')
-    merged = merge_dict(cumulated, on=by, strategy='name', suffix=suffix, sep=sep, postfix='d' if strict else 'i')
-    return merged
+    return merge_dict(
+        frames=cumulated,
+        on=by,
+        strategy='name',
+        suffix=suffix,
+        sep=sep,
+        fill_null=fill_null,
+        postfix='d' if strict else 'i',
+    )
 
 
 __all__ = [

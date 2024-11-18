@@ -1,5 +1,5 @@
 import polars as pl
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 
 
 def merge_list(frames: List[pl.LazyFrame], on: List[str]) -> pl.LazyFrame:
@@ -16,32 +16,30 @@ def merge_dict(
         sep: Optional[str] = '/',
         suffix: Optional[str] = None,
         postfix: Optional[str] = None,
-        fill_null: Optional[Any] = None,
+        fill_null: Optional[float] = None,
         column_name: Optional[str] = None,
 ):
-    suffix = '' if suffix is None else (sep + suffix)
-    postfix = '' if postfix is None else (sep + postfix)
+    postfix = '' if postfix is None else postfix
     if strategy == 'name':
-        frames = {
-            key: df.with_columns(
-                pl.exclude(on).name.suffix(f'{suffix}{key}{postfix}')
-            )
+        suffix = '' if suffix is None else (sep + suffix)
+        df = merge_list([
+            df.rename({
+                col: f'{col}{suffix}{sep}{key}{postfix}'
+                for col in df.collect_schema().names()
+                if col not in on
+            })
             for key, df in frames.items()
-        }
+        ], on=on)
     elif strategy == 'column':
         assert column_name is not None
-        frames = {
-            key: df.with_columns(
-                pl.lit(f'{suffix}{key}{postfix}').alias(column_name)
+        df = pl.concat([
+            df.with_columns(
+                pl.lit(f'{key}{postfix}').alias(column_name)
             )
             for key, df in frames.items()
-        }
+        ])
     else:
         raise NotImplementedError(strategy)
-    it = iter(frames.keys())
-    df = frames[next(it)]
-    for key in it:
-        df = df.join(frames[key], on=on, how='full', coalesce=True)
     if fill_null is not None:
         df = df.fill_null(fill_null)
     return df
