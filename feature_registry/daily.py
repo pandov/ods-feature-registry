@@ -22,14 +22,14 @@ def aggregate_daily_features(
 
 def filter_last_days(df: pl.LazyFrame, by: List[str], dt: date, window: int) -> pl.LazyFrame:
     assert 'date' not in by, str(by)
-    return df.filter(pl.col('date').is_between(dt - timedelta(days=window), dt, closed='left'))  # exclude `dt`
+    return df.filter(pl.col('date').is_between(dt - timedelta(days=window), dt, closed='right'))  # exclude `dt`
 
 
 def filter_last_interactions(df: pl.LazyFrame, by: List[str], dt: date, window: int) -> pl.LazyFrame:
     assert 'date' not in by, str(by)
     return (
         df
-        .filter(pl.col('date') < dt)  # exclude `dt`
+        .filter(pl.col('date') <= dt)  # exclude `dt`
         .with_columns(
             pl.lit(1).alias('index'),
         )
