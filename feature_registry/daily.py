@@ -74,7 +74,7 @@ def calculate_daily_features(
         cum: List[pl.Expr],
         dates: List[date],
         days: List[int],
-        sep: str,
+        sep: Optional[str] = '/',
         strict: Optional[bool] = True,
         fill_null: Optional[float] = 0,
 ):
