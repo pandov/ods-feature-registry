@@ -98,7 +98,7 @@ class FeatureStore:
         random_seed()
 
         stem, partition_by = self.get_write_meta(registry)
-        filepath, partition_by = registry.storage_path / stem
+        filepath = registry.storage_path / stem
     
         if filepath.exists() and self.cache:
             return pl.scan_parquet(filepath, cache=False)
