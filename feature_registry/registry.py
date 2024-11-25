@@ -6,7 +6,7 @@ from tqdm import tqdm
 from hashlib import md5
 from pathlib import Path
 from inspect import getsource
-from typing import Optional, Union, Callable, List, Dict, Any
+from typing import Optional, Union, Callable, Tuple, List, Dict, Any
 
 
 INTEGERS = (pl.Int32, pl.UInt32, pl.Int16, pl.UInt16, pl.Int8, pl.UInt8)
@@ -82,14 +82,22 @@ class FeatureStore:
         hashdict['__parent__'] = {dep: registry.registry_[dep].hashdict(registry) for dep in self.dependencies}
         return hashdict
 
+    def get_write_meta(self, registry: 'FeatureRegistry') -> Tuple[str, str]:
+        stem = self.name
+        if self.hashing:
+            hashsum = md5_hash(self.hashdict(registry))
+            stem += f'___{hashsum}'
+        if self.join_on is None or 'date' not in self.join_on:
+            stem += '.parquet'
+            partition_by = None
+        else:
+            partition_by = 'date'
+        return stem, partition_by
+
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         random_seed()
 
-        if self.hashing:
-            hashsum = md5_hash(self.hashdict(registry))
-            filepath = registry.storage_path / f'{self.name}___{hashsum}.parquet'
-        else:
-            filepath = registry.storage_path / f'{self.name}.parquet'
+        filepath, partition_by = registry.storage_path / self.get_write_meta(registry)
     
         if filepath.exists() and self.cache:
             return pl.scan_parquet(filepath, cache=False)
@@ -107,7 +115,7 @@ class FeatureStore:
         if not self.cache:
             return result.lazy()
         else:
-            result.write_parquet(filepath)
+            result.write_parquet(filepath, partition_by=partition_by)
             return pl.scan_parquet(filepath, cache=False)
 
 

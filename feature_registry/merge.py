@@ -1,5 +1,5 @@
 import polars as pl
-from typing import Optional, Dict, List
+from typing import Optional, Literal, Dict, List
 
 
 def merge_list(frames: List[pl.LazyFrame], on: List[str]) -> pl.LazyFrame:
@@ -12,7 +12,7 @@ def merge_list(frames: List[pl.LazyFrame], on: List[str]) -> pl.LazyFrame:
 def merge_dict(
         frames: Dict[int, pl.LazyFrame],
         on: List[str],
-        strategy: Optional[str] = None,
+        strategy: Literal['name', 'column'],
         sep: Optional[str] = '/',
         suffix: Optional[str] = None,
         postfix: Optional[str] = None,
