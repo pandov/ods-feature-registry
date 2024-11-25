@@ -97,7 +97,8 @@ class FeatureStore:
     def collect(self, registry: 'FeatureRegistry') -> pl.LazyFrame:
         random_seed()
 
-        filepath, partition_by = registry.storage_path / self.get_write_meta(registry)
+        stem, partition_by = self.get_write_meta(registry)
+        filepath, partition_by = registry.storage_path / stem
     
         if filepath.exists() and self.cache:
             return pl.scan_parquet(filepath, cache=False)
