@@ -1,6 +1,6 @@
 [project]
 name = "feature_registry"
-version = "1.4"
+version = "1.5"
 description = "https://github.com/pandov/ods-feature-registry"
 authors = [
     {name = "Viacheslav Pandov", email = "pandovvd@gmail.com"},
