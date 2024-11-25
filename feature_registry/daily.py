@@ -41,6 +41,28 @@ def filter_last_interactions(df: pl.LazyFrame, by: List[str], dt: date, window: 
     )
 
 
+def cumulate_features_by_date(
+        aggregated: pl.LazyFrame,
+        by: List[str],
+        agg: List[pl.Expr],
+        dt: date,
+        window: int,
+        strict: Optional[bool] = True,
+) -> pl.LazyFrame:
+    selector = [cs.by_name(*by), cs.exclude(*by)]
+    by = [x for x in by if x != 'date']
+    filter_last_fn = strict and filter_last_days or filter_last_interactions
+    return (
+        filter_last_fn(aggregated, by=by, dt=dt, window=window)
+        .group_by(*by)
+        .agg(agg)
+        .with_columns(
+            pl.lit(dt).alias('date'),
+        )
+        .select(*selector)
+    )
+
+
 def cumulate_daily_features(
         aggregated: pl.LazyFrame,
         by: List[str],
@@ -49,18 +71,16 @@ def cumulate_daily_features(
         days: List[int],
         strict: Optional[bool] = True,
 ) -> Dict[int, pl.LazyFrame]:
-    selector = [cs.by_name(*by), cs.exclude(*by)]
-    by = [x for x in by if x != 'date']
-    filter_last_fn = strict and filter_last_days or filter_last_interactions
     return {
         window: pl.concat([
-            filter_last_fn(aggregated, by=by, dt=dt, window=window)
-            .group_by(*by)
-            .agg(agg)
-            .with_columns(
-                pl.lit(dt).alias('date'),
+            cumulate_features_by_date(
+                aggregated=aggregated,
+                by=by,
+                agg=agg,
+                dt=dt,
+                window=window,
+                strict=strict,
             )
-            .select(*selector)
             for dt in dates
         ])
         for window in sorted(days)
@@ -96,6 +116,7 @@ __all__ = [
     'aggregate_daily_features',
     'filter_last_days',
     'filter_last_interactions',
+    'cumulate_features_by_date',
     'cumulate_daily_features',
     'calculate_daily_features',
 ]
